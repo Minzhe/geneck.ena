@@ -6,7 +6,8 @@
 ## sample can be any positive number.
 ## noise  can be any positive number (for our study, we should try 0.25, 0.5, 0.75, 1, 1.5 and 2)
 
-network.simulation <- function(size, sample, noise) {
+#####################  function  ###########################
+network.simulation <- function(base.folder, size, sample, noise) {
     dat <- read.csv(paste("data/", size, ".csv", sep = ""))
     
     #dim(dat)
@@ -24,10 +25,10 @@ network.simulation <- function(size, sample, noise) {
     ######################
     
     N <- dim(dat)[1]
-    dat$regulation <- round(sign(rbinom(N, 1, 0.5) - 0.5) * rnorm(N, 0.5, 0.2) , 2)
+    dat$regulation <- round(sign(rbinom(N, 1, 0.5) - 0.5) * rnorm(N, 0.5, 0.2), 2)
     dat$type <- sign(dat$regulation)
     
-    write.csv(dat, paste("data/truth ", size, ".csv", sep = ""), row.names = F, quote = F)
+    write.csv(dat, paste("data/", base.folder, "/truth ", size, ".csv", sep = ""), row.names = F, quote = F)
     
     #### initiate the matrix expr to store the simulated expression level ####
     
@@ -52,10 +53,9 @@ network.simulation <- function(size, sample, noise) {
             if (all(source %in% known)) {
                 #print(dat[dat$Target == i,]); cat("\n")
                 val <- ifelse(rep(length(source) == 1, nSamp),
-                              expr[as.character(source), ] * dat[dat$Target == i, 3] ,
+                              expr[as.character(source), ] * dat[dat$Target == i, 3],
                               dat[dat$Target == i, 3] %*% expr[as.character(source), ])
-                expr[as.character(i), ] <-
-                    as.numeric(val > 0.0) * 2 - 1 + rnorm(nSamp, 0, sigma)
+                expr[as.character(i), ] <- as.numeric(val > 0.0) * 2 - 1 + rnorm(nSamp, 0, sigma)
                 known <- append(known, i)
                 unknown <- setdiff(unknown, i)
             }
@@ -63,23 +63,22 @@ network.simulation <- function(size, sample, noise) {
     }
     
     expr <- t(expr)
-    write.csv(round(expr, 2), paste("data/", size, ".nSamp", nSamp, ".Sigma", noise, ".csv", sep = ""), row.names = FALSE)
+    colnames(expr) <- paste("X", colnames(expr), sep = "")
+    write.csv(round(expr, 2), paste("data/", base.folder, "/", size, ".nSample", nSamp, ".sigma", noise, ".csv", sep = ""), row.names = FALSE)
 }
 
-#### Call function ##
-
-network.simulation(size = "huge", sample = 500, noise = 1.0)
-
-#### Call function in loop to simulate all senarios ##
-
-SIZE <- c("tiny", "small", "moderate", "middle", "large", "huge")
-NP <- c(20, 50, 100, 200, 500, 1000)
-NOISE <- c(0.25, 0.5, 0.75, 1.0, 1.5, 2.0)
-
-set.seed(1234)
-
-for (size in SIZE)
-    for (sample in NP)
-        for (noise in NOISE)
-            network.simulation(size = size, sample = sample, noise = noise)
-################
+###################  adjacency matrix  ####################
+edge.to.adjacency <- function(edge.file) {
+      file.name <- strsplit(edge.file, ".", fixed = TRUE)[[1]]
+      adj.name <- paste(file.name[-length(file.name)], "matrix.csv")
+      
+      dat <- read.csv(edge.file)[,1:3]
+      node.name <- sort(unique(c(dat$Source, dat$Target)))
+      adj.mat <- matrix(0, length(node.name), length(node.name), dimnames = list(node.name, node.name))
+      for (i in 1:nrow(dat)) {
+            r.idx <- which(node.name == dat$Source[i])
+            c.idx <- which(node.name == dat$Target[i])
+            adj.mat[r.idx,c.idx] <- adj.mat[c.idx,r.idx] <- dat$regulation[i]
+      }
+      write.csv(adj.mat, adj.name)
+}

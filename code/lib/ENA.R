@@ -5,7 +5,7 @@
 
 ena.rank <- function(net.list, method) {
     if (!(method %in% c("inverse.sum", "sum", "inverse.prod"))) {
-        print("Method should be 'inverse.sum', 'sum' or 'inverse.prod'.")
+        cat("Method should be 'inverse.sum', 'sum' or 'inverse.prod'.\n")
         return()
     }
     
